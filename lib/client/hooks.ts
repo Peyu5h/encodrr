@@ -15,6 +15,8 @@ export function useJobs() {
   return useQuery({
     queryKey: jobKeys.all,
     queryFn: ({ signal }) => api.get<Job[]>("/api/jobs", signal),
+    refetchInterval: (query) =>
+      query.state.data?.some((job) => job.status === "RUNNING") ? 2_000 : false,
   });
 }
 
@@ -33,11 +35,17 @@ export function useCreateJob() {
   });
 }
 
-// TODO(candidate): a mutation to start a run (POST /api/runs → { runId }).
-//
-// TODO(candidate): a helper to fetch a single run (GET /api/runs/:id) — useful for reading the
-// result once the stream reports COMPLETED.
+export function useStartRun(jobId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ runId: string }>("/api/runs", { jobId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: jobKeys.all }),
+  });
+}
 
+export function useRun(runId: string, { enabled }: { enabled: boolean }) {
+  return useQuery({ queryKey: ["runs", runId], queryFn: () => fetchRun(runId), enabled });
+}
 /** Imperative one-shot fetch of a run's current state. */
 export function fetchRun(runId: string) {
   return api.get<EncodeRun>(`/api/runs/${runId}`);
