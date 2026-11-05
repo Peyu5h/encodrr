@@ -29,7 +29,7 @@ export function useCreateJob() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateJobInput) => api.post<Job>("/api/jobs", input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: jobKeys.all }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: jobKeys.all }),
   });
 }
 

@@ -18,6 +18,7 @@ const SAMPLES = [
 export default function JobsPage() {
   const jobs = useJobs();
   const createJob = useCreateJob();
+  const pending = createJob.isPending ? createJob.variables : null;
 
   const {
     register,
@@ -109,10 +110,23 @@ export default function JobsPage() {
             </button>
           </div>
         )}
-        {jobs.data?.length === 0 && (
+        {jobs.data?.length === 0 && !pending && (
           <p className="text-sm text-neutral-500">No jobs yet.</p>
         )}
         <ul className="min-h-0 divide-y divide-neutral-200 overflow-y-auto rounded-md border border-neutral-200 bg-white empty:hidden">
+          {pending && (
+            <li className="flex items-center justify-between gap-3 px-4 py-3 opacity-50">
+              <div className="min-w-0">
+                <p className="truncate font-medium">
+                  {pending.title || pending.sourceUrl.split("/").pop()}
+                </p>
+                <p className="truncate text-xs text-neutral-500">
+                  {pending.sourceUrl}
+                </p>
+              </div>
+              <StatusBadge value="NEW" />
+            </li>
+          )}
           {jobs.data?.map((job) => (
             <li key={job.id}>
               <Link
