@@ -1,13 +1,15 @@
-import { error } from "@/lib/server/http";
+import { createJobSchema } from "@/lib/schemas";
+import { invalid, json, parseBody, withAuth } from "@/lib/server/http";
+import { createJob, listJobs } from "@/lib/server/store";
 
-// TODO(candidate): both handlers must require authentication (see lib/server/http.ts → withAuth).
-//   GET  → return the list of jobs.
-//   POST → validate the body with createJobSchema; on success create a job and return it (201);
-//          on validation failure return field-level errors so the client can map them to the form.
-export async function GET(_req: Request) {
-  return error(501, "Not implemented: GET /api/jobs");
+export async function GET(req: Request) {
+  return withAuth(req, () => json(listJobs()));
 }
 
-export async function POST(_req: Request) {
-  return error(501, "Not implemented: POST /api/jobs");
+export async function POST(req: Request) {
+  return withAuth(req, async () => {
+    const body = await parseBody(req, createJobSchema);
+    if (!body.success) return invalid(body.error);
+    return json(createJob(body.data), 201);
+  });
 }
