@@ -1,4 +1,6 @@
 import { getUserIdFromRequest } from "@/lib/server/auth";
+import { z } from "zod";
+
 
 export function json(data: unknown, init?: number | ResponseInit): Response {
   const responseInit: ResponseInit = typeof init === "number" ? { status: init } : (init ?? {});
@@ -31,4 +33,12 @@ export async function withAuth(
     if (e instanceof Response) return e;
     throw e;
   }
+}
+
+export async function parseBody<T extends z.ZodType>(req: Request, schema: T) {
+  return schema.safeParse(await req.json().catch(() => null));
+}
+
+export function invalid(err: z.ZodError): Response {
+  return json({ detail: "Validation failed", fieldErrors: z.flattenError(err).fieldErrors }, 422);
 }

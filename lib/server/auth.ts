@@ -1,19 +1,45 @@
 import type { User } from "@/lib/types";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 // Mock auth for the exercise — no real identity provider, no database.
-//
-// TODO(candidate): implement token issuance + verification.
-//  - issueTokens(): mint a SHORT-LIVED access token (~60s, so the client's refresh path is
-//    observable) and a longer-lived refresh token. A signed JWT or an opaque token you verify
-//    server-side both work.
-//  - verify the access token in getUserIdFromRequest(), and the refresh token in the refresh route.
-//  - Remember: native EventSource can't send an Authorization header — decide how the SSE route
-//    will authenticate (header via fetch-event-source? short-lived query token? cookie?).
+
 
 // The one hard-coded user. Documented in the README.
 const USERS: (User & { password: string })[] = [
   { id: "u_demo", email: "demo@encodr.dev", name: "Demo User", password: "password123" },
 ];
+
+const SECRET = process.env.AUTH_SECRET ?? randomBytes(32).toString("hex");
+const ACCESS_TTL_MS = 60_000;
+const REFRESH_TTL_MS = 7 * 24 * 60 * 60_000;
+
+type TokenKind = "access" | "refresh";
+
+interface Claims {
+  sub: string;
+  kind: TokenKind;
+  exp: number; // epoch ms
+}
+
+function sign(payload: string): string {
+  return createHmac("sha256", SECRET).update(payload).digest("base64url");
+}
+
+function mint(sub: string, kind: TokenKind, ttlMs: number): string {
+  const claims: Claims = { sub, kind, exp: Date.now() + ttlMs };
+  const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  return `${payload}.${sign(payload)}`;
+}
+
+function verify(token: string, kind: TokenKind): string | null {
+  const [payload = "", signature = ""] = token.split(".");
+  const expected = Buffer.from(sign(payload));
+  const actual = Buffer.from(signature);
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
+
+  const claims = JSON.parse(Buffer.from(payload, "base64url").toString()) as Claims;
+  return claims.kind === kind && claims.exp > Date.now() ? claims.sub : null;
+}
 
 export function authenticate(email: string, password: string): User | null {
   const user = USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
@@ -29,24 +55,24 @@ export function findUser(id: string): User | null {
   return safe;
 }
 
-export function issueTokens(_userId: string): { accessToken: string; refreshToken: string } {
-  // TODO(candidate): mint real tokens.
-  throw new Error("Not implemented: issueTokens");
+export function issueTokens(userId: string): { accessToken: string; refreshToken: string } {
+  return {
+    accessToken: issueAccessToken(userId),
+    refreshToken: mint(userId, "refresh", REFRESH_TTL_MS),
+  };
 }
 
-export function issueAccessToken(_userId: string): string {
-  // TODO(candidate): mint a new short-lived access token from a valid refresh.
-  throw new Error("Not implemented: issueAccessToken");
+export function issueAccessToken(userId: string): string {
+  return mint(userId, "access", ACCESS_TTL_MS);
 }
 
 /** Return the authenticated userId from the request, or null. */
-export function getUserIdFromRequest(_req: Request): string | null {
-  // TODO(candidate): read + verify the bearer (or query) token and return its subject.
-  return null;
+export function getUserIdFromRequest(req: Request): string | null {
+  const [scheme, token] = (req.headers.get("authorization") ?? "").split(" ");
+  return scheme === "Bearer" && token ? verify(token, "access") : null;
 }
 
 /** Verify a refresh token and return its subject (userId), or null. */
-export function verifyRefreshToken(_token: string): string | null {
-  // TODO(candidate): verify signature + expiry + type.
-  return null;
+export function verifyRefreshToken(token: string): string | null {
+  return verify(token, "refresh");
 }

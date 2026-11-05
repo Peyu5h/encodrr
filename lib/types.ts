@@ -72,3 +72,9 @@ export interface RunEvent {
   message: string;
   error?: string;
 }
+
+export interface Session {
+  accessToken: string;
+  refreshToken: string;
+  user: User;
+}
