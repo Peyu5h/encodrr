@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Encodr — Transcoding Dashboard",
+  title: "Encodr",
   description: "Submit media for transcoding and watch encode jobs run.",
 };
 

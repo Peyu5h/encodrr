@@ -93,17 +93,16 @@ export function computeRun(record: RunRecord, now: number = Date.now()): EncodeR
   };
 }
 
-// seeded by the url so a source always "encodes" the same way
+// derived from the url, so a source always "encodes" the same way
 function encodeResult(sourceUrl: string): EncodeResult {
-  const seed = [...sourceUrl].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7);
-  const durationSec = 45 + (seed % 600);
+  const durationSec = 60 + ((sourceUrl.length * 17) % 240);
   return {
     durationSec,
     renditions: LADDER.map(({ kbps, ...rendition }) => {
       const megabytes = (kbps * durationSec) / 8 / 1000;
       return { ...rendition, sizeMb: Math.round(megabytes * 10) / 10 };
     }),
-    warnings: seed % 3 === 0 ? ["Variable frame rate detected, normalised to 30 fps"] : [],
+    warnings: sourceUrl.length % 3 === 0 ? ["Variable frame rate detected, normalised to 30 fps"] : [],
   };
 }
 

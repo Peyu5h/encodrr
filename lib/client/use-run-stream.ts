@@ -7,9 +7,6 @@ import { isTerminalStage, type RunEvent } from "@/lib/types";
 
 export type StreamStatus = "connecting" | "live" | "reconnecting" | "closed";
 
-// thrown to stop fetch-event-source from retrying
-class FatalStreamError extends Error { }
-
 // callers key by runId, so a new run starts with an empty log
 export function useRunStream(runId: string | null, onTerminal?: () => void) {
   const [events, setEvents] = useState<RunEvent[]>([]);
@@ -24,9 +21,12 @@ export function useRunStream(runId: string | null, onTerminal?: () => void) {
     fetchEventSource(`/api/runs/${runId}/events`, {
       signal: controller.signal,
       fetch: apiFetch, // same bearer token and silent refresh as every other request
-      openWhenHidden: true,
       async onopen(res) {
-        if (!res.ok) throw new FatalStreamError(`Stream refused with ${res.status}`);
+        if (!res.ok) {
+          // a refused stream (404, 401 after refresh) isn't worth retrying
+          controller.abort();
+          return setStatus("closed");
+        }
         setStatus("live");
       },
       onmessage(message) {
@@ -42,11 +42,10 @@ export function useRunStream(runId: string | null, onTerminal?: () => void) {
         if (!ended) throw new Error("Stream dropped");
         setStatus("closed");
       },
-      onerror(err) {
-        if (err instanceof FatalStreamError) throw err;
+      onerror() {
         setStatus("reconnecting");
       },
-    }).catch(() => setStatus("closed"));
+    });
 
     return () => controller.abort();
   }, [runId]);

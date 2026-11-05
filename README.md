@@ -1,60 +1,61 @@
-# Encodr — Fullstack Take-Home
+# Encodr
 
-Thanks for taking the time! This is a small **media transcoding dashboard**. You'll build a flow where
-a signed-in user creates an encode **job** from a media URL, starts a **transcode run**, watches its
-**progress stream in live**, and sees the **output renditions** when it finishes.
+A small transcoding dashboard: create a job from a media URL, start an encode, watch it run live, and see
+the renditions when it finishes. Requirements are in `BRIEF.md`.
 
-The full brief — requirements, the API contract, and what we look for — is in **`BRIEF.md`** in this
-repo. Read it first; this README only covers running the scaffold.
-
-## Run it
+## Running it
 
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm run test:run   # tests (one example test is included and passes)
-npm run typecheck  # tsc --noEmit
-npm run build      # production build
+npm run test:run
+npm run typecheck
 ```
 
-Requires **Node 20+**. **Demo login:** `demo@encodr.dev` / `password123`.
+Node 20+. Login: `demo@encodr.dev` / `password123`.
 
-On a fresh checkout the app runs but most features are stubbed — the API routes return `501` and the
-client logic is unimplemented. That's expected: your job is to fill in the `TODO(candidate)` markers.
+The e2e test needs a browser once: `npx playwright install chromium`, then `npm run test:e2e`.
 
-## What's provided vs. what you build
+Under the URL field are two samples. `intro.mp4` finishes in about 30s, and `corrupt.mp4` fails halfway so
+you can see the error and the retry.
 
-**Provided (so you don't fight setup):**
-- Next.js (App Router) + TypeScript (strict) + Tailwind, configured and running.
-- TanStack Query, React Hook Form + Zod, `@microsoft/fetch-event-source` installed.
-- The **API contract** as shared types (`lib/types.ts`) and the schema file (`lib/schemas.ts`).
-- The app shell + auth-aware layout, a working sign-in page, token storage plumbing
-  (`lib/client/token-store.ts`), HTTP helpers (`lib/server/http.ts`), and a couple of UI components.
-- Worked examples of the React Query pattern (`useJobs`, `useJob`).
+## How it works
 
-**You implement (look for `TODO(candidate)`):**
-- `lib/server/auth.ts` — issue/verify tokens (short-lived access + refresh).
-- `app/api/**` — the Route Handlers (auth, jobs, runs, and the **SSE** progress stream).
-- `lib/server/store.ts` — `computeRun()`: the encode run's stage/progress state machine.
-- `lib/client/api.ts` — 401 → silent refresh + single retry.
-- `lib/client/auth-context.tsx` — `login()`.
-- `lib/client/use-run-stream.ts` — the SSE subscription hook (with cleanup).
-- `lib/client/hooks.ts` — create-job / start-run mutations.
-- `lib/schemas.ts` — real source-URL validation.
-- The **job list + create form** and the **job detail** screen (run controls, live progress, results).
+**SSE auth.** The stream sends the same `Authorization: Bearer` header as every other request. I open it
+with `fetch-event-source` and pass `apiFetch` as its `fetch`, so a reconnect gets the token refresh too.
+A query-string token would end up in logs, and a cookie would mean a second auth mechanism.
 
-Use `https://cdn.example.com/videos/corrupt.mp4` as a source URL — your run state machine should make
-that one **fail** partway, so you can build (and we can see) the error/retry path.
+**Refresh and retry.** `apiFetch` adds the access token. On a 401 it refreshes once and replays the request
+once. Requests that fail at the same time wait on the same refresh instead of each starting their own. If
+the refresh fails, the tokens are cleared and you go back to `/signin`. Access tokens last 60s and are
+HMAC-signed with `node:crypto`, so no extra dependency.
 
-## Notes & ground rules
+**Runs.** `computeRun` works out a run's state from the time since it started, so there are no timers to
+manage. `EncodeRun` is a discriminated union, so a `result` only exists on a completed run and an `error`
+only on a failed one. A job's status comes from its latest run.
 
-- State can live **in-memory** (a module-level `Map`) — no database needed. Restarting the dev server
-  wiping data is fine.
-- Keep the access-token TTL short (~60s) so your refresh path is actually exercised.
-- AI tools are allowed, but you own every line — there's a follow-up interview where you'll explain and
-  extend your own code.
-- If something's ambiguous, make a reasonable call, note it here, and move on.
+**Stream.** One event per second, numbered from the start of the run. A new connection replays the whole
+log, and a reconnect resumes from `Last-Event-ID`. The timer is cleared when the run ends or the client
+leaves.
 
-When you're done, please update this README with: anything you assumed, key design decisions
-(especially how you authenticated the SSE stream and how the refresh/retry works), and what you'd do
-next with more time.
+## Tests
+
+A few focused ones: the run timeline and the corrupt source, token expiry, the URL rules, one refresh for
+several 401s, the stream resuming and cleaning up, and server errors landing on the right form field. One
+Playwright test covers the happy path.
+
+The optional stretch goals are all in: shared refresh, SSE resume, optimistic create with rollback, and
+the Playwright test.
+
+## Assumptions
+
+- One hard-coded user, so jobs aren't per user.
+- A valid source is an http(s) URL on a real domain that ends in a media extension (`.mp4`, `.mov`, `.m3u8`…).
+- Only `https://cdn.example.com/videos/corrupt.mp4` fails, and it always does.
+- Light theme only, since theming was out of scope.
+
+## With more time
+
+- Keep the refresh token in an httpOnly cookie and rotate it.
+- Use a database and a job queue instead of in-memory state.
+- Let users cancel an encode, and add an e2e for the failure path.

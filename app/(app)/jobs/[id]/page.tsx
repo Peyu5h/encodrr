@@ -188,7 +188,11 @@ function EncoderLog({
         </span>
       </header>
       {/* column-reverse keeps the newest line in view without scroll code */}
-      <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-4 py-3">
+      <div
+        role="log"
+        aria-label="Encoder log"
+        className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-4 py-3"
+      >
         <ol className="font-mono text-xs leading-6 text-neutral-300">
           {events.map((event, i) => (
             <li
@@ -216,14 +220,14 @@ function EncoderLog({
 
 function Output({ result }: { result: EncodeResult }) {
   const minutes = Math.floor(result.durationSec / 60);
-  const seconds = String(result.durationSec % 60).padStart(2, "0");
+  const seconds = result.durationSec % 60;
 
   return (
     <section className="min-h-0 overflow-y-auto rounded-md border border-neutral-200 bg-white">
       <header className="flex items-baseline justify-between border-b border-neutral-200 px-4 py-2.5 text-sm">
         <h2 className="font-medium">Output</h2>
         <span className="tabular-nums text-neutral-500">
-          Duration {minutes}:{seconds}
+          Duration {minutes}m {seconds}s
         </span>
       </header>
       <table className="w-full text-sm">

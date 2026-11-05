@@ -17,7 +17,7 @@ export function StatusBadge({ value }: { value: JobStatus | Stage }) {
   return (
     <span
       className={clsx(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex h-6 items-center rounded-md px-2 text-xs leading-none font-medium",
         STYLES[value] ?? "bg-neutral-200 text-neutral-700",
       )}
     >

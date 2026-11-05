@@ -83,7 +83,7 @@ export default function JobsPage() {
                 onClick={() =>
                   setValue("sourceUrl", url, { shouldValidate: true })
                 }
-                className="rounded border border-neutral-200 bg-white px-1.5 py-0.5 font-mono text-neutral-700 hover:border-neutral-400"
+                className="inline-flex h-6 items-center rounded-md border border-neutral-200 bg-white px-2 font-mono leading-none text-neutral-700 hover:border-neutral-400"
               >
                 {url.split("/").pop()}
               </button>
@@ -104,14 +104,19 @@ export default function JobsPage() {
         )}
         {jobs.isError && (
           <div className="text-sm text-red-600">
-            Couldn’t load jobs (is GET /api/jobs implemented?).{" "}
+            Couldn’t load jobs.{" "}
             <button onClick={() => jobs.refetch()} className="underline">
               Retry
             </button>
           </div>
         )}
         {jobs.data?.length === 0 && !pending && (
-          <p className="text-sm text-neutral-500">No jobs yet.</p>
+          <div className="rounded-md border border-dashed border-neutral-300 px-4 py-10 text-center">
+            <p className="font-medium">No jobs yet</p>
+            <p className="mt-1 text-sm text-neutral-500">
+              Paste a media URL above, or try one of the sample
+            </p>
+          </div>
         )}
         <ul className="min-h-0 divide-y divide-neutral-200 overflow-y-auto rounded-md border border-neutral-200 bg-white empty:hidden">
           {pending && (
