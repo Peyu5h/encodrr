@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/client/auth-context";
+import { Button } from "@/components/button";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, ready, logout } = useAuth();
@@ -20,22 +21,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-4xl px-4 py-6">
-      <header className="mb-8 flex items-center justify-between border-b border-neutral-200 pb-4">
-        <Link href="/jobs" className="text-lg font-semibold">
-          🎬 Encodr
+    <div className="mx-auto flex h-dvh max-w-4xl flex-col px-4 py-6">
+      <header className="mb-6 flex shrink-0 items-center justify-between border-b border-neutral-200 pb-4">
+        <Link href="/jobs" className="text-lg font-semibold tracking-tight">
+          Encodr
         </Link>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-neutral-500">{user.email}</span>
-          <button
-            onClick={logout}
-            className="rounded-md border border-neutral-300 px-3 py-1 hover:bg-neutral-100"
-          >
+          <Button variant="secondary" onClick={logout}>
             Sign out
-          </button>
+          </Button>
         </div>
       </header>
-      {children}
+      <main className="min-h-0 flex-1">{children}</main>
     </div>
   );
 }

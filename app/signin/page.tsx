@@ -6,6 +6,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
 import { useAuth } from "@/lib/client/auth-context";
+import { Button } from "@/components/button";
+import { Field } from "@/components/field";
 
 // Provided as-is. It calls useAuth().login() — which you implement in lib/client/auth-context.tsx.
 export default function SignInPage() {
@@ -38,43 +40,36 @@ export default function SignInPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
-      <h1 className="mb-1 text-2xl font-semibold">🎬 Encodr</h1>
-      <p className="mb-6 text-sm text-neutral-500">Sign in to manage your encode jobs.</p>
+      <h1 className="mb-1 text-2xl font-semibold tracking-tight">Encodr</h1>
+      <p className="mb-6 text-sm text-neutral-500">
+        Sign in to manage your encode jobs.
+      </p>
 
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Email</label>
-          <input
-            {...register("email")}
-            type="email"
-            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
-            autoComplete="username"
-          />
-          {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium">Password</label>
-          <input
-            {...register("password")}
-            type="password"
-            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
-            autoComplete="current-password"
-          />
-          {errors.password && (
-            <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
-          )}
-        </div>
+      <form
+        onSubmit={onSubmit}
+        className="space-y-4 rounded-lg border border-neutral-200 bg-white p-6"
+        noValidate
+      >
+        <Field
+          {...register("email")}
+          label="Email"
+          type="email"
+          autoComplete="username"
+          error={errors.email?.message}
+        />
+        <Field
+          {...register("password")}
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          error={errors.password?.message}
+        />
 
         {formError && <p className="text-sm text-red-600">{formError}</p>}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
+        <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? "Signing in…" : "Sign in"}
-        </button>
+        </Button>
       </form>
 
       <p className="mt-6 text-center text-xs text-neutral-400">
