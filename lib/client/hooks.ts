@@ -1,8 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/client/api";
 import type { EncodeRun, Job } from "@/lib/types";
+import type { CreateJobInput } from "@/lib/schemas";
 
 export const jobKeys = {
   all: ["jobs"] as const,
@@ -24,9 +25,14 @@ export function useJob(id: string) {
   });
 }
 
-// TODO(candidate): a mutation to create a job (POST /api/jobs). On success, invalidate jobKeys.all
-// so the list refetches.
-//
+export function useCreateJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateJobInput) => api.post<Job>("/api/jobs", input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: jobKeys.all }),
+  });
+}
+
 // TODO(candidate): a mutation to start a run (POST /api/runs → { runId }).
 //
 // TODO(candidate): a helper to fetch a single run (GET /api/runs/:id) — useful for reading the
