@@ -1,4 +1,4 @@
-import { getAccessToken } from "@/lib/client/token-store";
+import { getAccessToken, clearTokens, getRefreshToken, setTokens } from "@/lib/client/token-store";
 
 export class ApiError extends Error {
   status: number;
@@ -31,6 +31,47 @@ async function parseError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, detail, fieldErrors);
 }
 
+async function refresh(): Promise<boolean> {
+  const res = await fetch("/api/auth/refresh", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ refreshToken: getRefreshToken() }),
+  });
+  if (!res.ok) return false;
+  const { accessToken } = (await res.json()) as { accessToken: string };
+  setTokens({ accessToken });
+  return true;
+}
+
+// concurrent 401s all wait on this one refresh
+let refreshing: Promise<boolean> | null = null;
+
+function refreshOnce(): Promise<boolean> {
+  refreshing ??= refresh()
+    .catch(() => false)
+    .finally(() => {
+      refreshing = null;
+    });
+  return refreshing;
+}
+
+export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const send = () => {
+    const headers = new Headers(init.headers);
+    const access = getAccessToken();
+    if (access) headers.set("authorization", `Bearer ${access}`);
+    return fetch(input, { ...init, headers });
+  };
+
+  const res = await send();
+  if (res.status !== 401 || !getRefreshToken()) return res;
+  if (await refreshOnce()) return send();
+
+  clearTokens();
+  window.dispatchEvent(new Event(AUTH_LOGOUT_EVENT));
+  return res;
+}
+
 interface RequestOptions {
   method?: string;
   body?: unknown;
@@ -39,21 +80,15 @@ interface RequestOptions {
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
-  const access = getAccessToken();
-  if (access) headers["authorization"] = `Bearer ${access}`;
   if (options.body !== undefined) headers["content-type"] = "application/json";
 
-  const res = await fetch(path, {
+  const res = await apiFetch(path, {
     method: options.method ?? "GET",
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     signal: options.signal,
   });
 
-  // TODO(candidate): handle 401 here — attempt ONE silent refresh (POST /api/auth/refresh) and
-  // retry the original request once. If the refresh fails, clear tokens and dispatch
-  // AUTH_LOGOUT_EVENT so the app can route back to /signin.
-  // Bonus: make sure several requests that 401 at the same time share ONE refresh, not N.
 
   if (!res.ok) throw await parseError(res);
   if (res.status === 204) return undefined as T;
