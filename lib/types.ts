@@ -23,7 +23,10 @@ export const ACTIVE_STAGES: Stage[] = [
 
 export const TERMINAL_STAGES: Stage[] = ["COMPLETED", "FAILED"];
 
-export function isTerminalStage(stage: Stage): boolean {
+export type TerminalStage = "COMPLETED" | "FAILED";
+export type ActiveStage = Exclude<Stage, TerminalStage>;
+
+export function isTerminalStage(stage: Stage): stage is TerminalStage {
   return TERMINAL_STAGES.includes(stage);
 }
 
@@ -55,15 +58,19 @@ export interface EncodeResult {
   warnings: string[];
 }
 
-export interface EncodeRun {
+interface RunBase {
   id: string;
   jobId: string;
-  stage: Stage;
   progressPct: number; // 0–100
-  error?: string;
-  /** Present once the run reaches COMPLETED. */
-  result?: EncodeResult;
+  message: string; // latest encoder log line
 }
+
+export type EncodeRun = RunBase &
+  (
+    | { stage: ActiveStage }
+    | { stage: "COMPLETED"; result: EncodeResult }
+    | { stage: "FAILED"; error: string }
+  );
 
 /** Shape of each Server-Sent Event streamed from /api/runs/:id/events. */
 export interface RunEvent {
