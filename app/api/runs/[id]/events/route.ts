@@ -6,14 +6,15 @@ import { isTerminalStage, type RunEvent } from "@/lib/types";
 
 const TICK_MS = 1_000;
 
-// event n is tick n of the run, so a new connection can replay it from 0
+// event n is tick n of the run, so a stream can replay from 0 or resume after Last-Event-ID
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return withAuth(req, async () => {
     const { id } = await ctx.params;
     const record = getRunRecord(id);
     if (!record) return error(404, "Run not found");
 
-    let seq = 0;
+    const lastEventId = Number(req.headers.get("last-event-id") ?? -1);
+    let seq = Number.isInteger(lastEventId) ? Math.max(0, lastEventId + 1) : 0;
     let timer: ReturnType<typeof setInterval> | undefined;
     const encoder = new TextEncoder();
 

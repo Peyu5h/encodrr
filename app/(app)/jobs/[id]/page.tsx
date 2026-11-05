@@ -166,6 +166,7 @@ function RunProgress({ events }: { events: RunEvent[] }) {
 const STREAM_STATUS: Record<StreamStatus, { label: string; dot: string }> = {
   connecting: { label: "Connecting", dot: "bg-amber-400" },
   live: { label: "Live", dot: "animate-pulse bg-emerald-400" },
+  reconnecting: { label: "Reconnecting", dot: "animate-pulse bg-amber-400" },
   closed: { label: "Ended", dot: "bg-neutral-500" },
 };
 
